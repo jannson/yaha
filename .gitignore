@@ -1,0 +1,13 @@
+*.[oad]
+*.swp
+*.swo
+cscope.*
+tags
+z.*
+*.vim
+*.zzz
+TODO
+build
+dist
+whoosh_index
+~.gitignore
