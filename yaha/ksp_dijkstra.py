@@ -3,15 +3,15 @@ from operator import itemgetter
 from prioritydictionary import priorityDictionary
 
 class Graph:
-    INFINITY = 10000
+    INFINITY = 100000
     UNDEFINDED = None
 
-    def __init__(self, n):
+    def __init__(self, n, default_prob):
         self._data = {}
         self.N = n
         for i in xrange(0,n-1,1):
             self._data[i] = {}
-            self._data[i][i+1] = 0.0
+            self._data[i][i+1] = default_prob
         self._data[n-1] = {}
 
     def __str__(self):
