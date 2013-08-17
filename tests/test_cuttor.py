@@ -1,15 +1,19 @@
 # -*- coding=utf-8 -*-
+import sys
+from yaha import Cuttor, SurnameCutting2, SuffixCutting
 
-from yaha import Cuttor
-
-str = '唐成真是唐成是个唐成'
+str = '唐成真是唐成牛强乡是个唐成真'
 cuttor = Cuttor()
 
 #cuttor.add_regex(re.compile('\d+', re.I|re.U))
 #surname = SurnameCutting()
 #cuttor.add_stage(surname)
+
 surname = SurnameCutting2()
 cuttor.add_stage(surname)
+
+suffix = SuffixCutting()
+cuttor.add_stage(suffix)
 
 seglist = cuttor.cut(str)
 print ','.join(list(seglist))

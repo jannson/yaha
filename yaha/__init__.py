@@ -1,11 +1,93 @@
 # -*- coding=utf-8 -*-
 import sys, os.path, codecs, re, math
 import collections
+import threading
 
 # ksp_dijkstra for default
 from ksp_dijkstra import Graph, ksp_yen, quick_shortest
 #note: a little error in ksp_dp
 #from ksp_dp import Graph, ksp_yen
+
+DICT_LOCK = threading.RLock()
+DICT_INIT = False
+class DICTS:
+    LEN = 6
+    MAIN,SURNAME,SUFFIX,EXT_STOPWORD,STOPWORD,QUANTIFIER = range(6)
+    MAIN_DICT = {}
+    SURNAME_DICT = {}
+    DEFAULT = ['dict.dic', 'surname.dic', 'suffix.dic', 'ext_stopword.dic','stopword.dic', 'quantifier.dic']
+    DEFAULT_DICT = []
+
+class WordBase(object):
+    def __init__(self):
+        self.base_freq = 0
+        self.base_ps = 0.0
+        self.type = ''
+
+class DictBase(object):
+    def __init__(self):
+        self._data = {}
+        self.total = 0
+
+    def __str__(self):
+        return str(self._data)
+
+    def __repr__(self):
+        return (self._data)
+
+    def __getitem__(self, node):
+        if self._data.has_key(node):
+            return self._data[node]
+        else:
+            return None
+    
+    def __iter__(self):
+        return self._data.__iter__()
+    
+    def add_term(self, term, word):
+        self._data[term] = word
+        self.total += word.base_freq
+
+    def normalize(self):
+        #ignore which the total is zero
+        if self.total == 0:
+            return
+        for term, word in self._data.iteritems():
+            word.base_ps = math.log(float(word.base_freq)/self.total)
+
+    def has_key(self, term):
+        return self._data.has_key(term)
+
+def get_dict(type):
+    global DICT_INIT
+    if type < 0 or type >= DICTS.LEN:
+        return {}
+    if DICT_INIT:
+        return DICTS.DEFAULT_DICT[type]
+    with DICT_LOCK:
+        if DICT_INIT:
+            return DICTS.DEFAULT_DICT[type]
+        
+        print >> sys.stderr, 'Start load dict...'
+        for i in xrange(0, DICTS.LEN, 1):
+            new_dict = DictBase()
+            curpath = os.path.normpath( os.path.join( os.getcwd(), os.path.dirname(__file__) )  )
+            with codecs.open(os.path.join(curpath, 'dict', DICTS.DEFAULT[i]), "r", "utf-8") as file:
+                for line in file:
+                    tokens = line.split(" ")
+                    term = tokens[0].strip()
+                    word = WordBase()
+                    if len(tokens) >= 2:
+                        word.base_freq = int(tokens[1].strip())
+                    if len(tokens) >= 3:
+                        word.type = tokens[2].strip()
+                    new_dict.add_term(term, word)
+            new_dict.normalize()
+            DICTS.DEFAULT_DICT.append(new_dict)
+            DICT_INIT = True
+        print >> sys.stderr, 'End load dict.'
+
+    return DICTS.DEFAULT_DICT[type]
 
 cutlist = " .[。，,！……!《》<>\"':：？\?、\|“”‘’；]{}（）{}【】()｛｝（）：？！。，;、~——+％%`:“”＂'‘\n\r"
 if not isinstance(cutlist, unicode):
@@ -29,10 +111,7 @@ def cut_to_sentence(line):
 
 class CuttingBase(object):
     def __init__(self):
-        self.do_stage1 = False
-        self.do_stage2 = False
-        self.do_stage3 = False
-        self.do_stage4 = False
+        self.stage = -1
 
     #def cut_stage1(self, cuttor, sentence, graph):
     #    pass
@@ -47,10 +126,10 @@ class RegexCutting(CuttingBase):
     def __init__(self, rex, stage):
         super(CuttingBase, self).__init__()
         if stage == 1:
-            self.do_stage1 = True
+            self.stage = 1
             # TODO
         else:
-            self.do_stage2 = True
+            self.stage = 2
             self.cut_stage2 = self.cut_regex
         self.rex = rex
 
@@ -59,14 +138,10 @@ class RegexCutting(CuttingBase):
             graph.add_edge(m.start(0),m.end(0), cuttor.default_prob)
 
 class SurnameCutting(CuttingBase):
-    def __init__(self, dict_file):
+    def __init__(self):
         super(CuttingBase, self).__init__()
-        self.do_stage3 = True
-        self.dict = {}
-        
-        with codecs.open(dict_file, "r", "utf-8") as file:
-            for line in file:
-                self.dict[line.strip()] = True
+        self.stage = 3
+        self.dict = get_dict(DICTS.SURNAME)
 
     def cut_stage3(self, cuttor, sentence, graph, start, end):
         klen = end-start
@@ -84,15 +159,12 @@ class SurnameCutting(CuttingBase):
             graph.add_edge(start,start+4, cuttor.refer_prob*1.5)
 
 class SurnameCutting2(CuttingBase):
-    def __init__(self, dict_file):
+    def __init__(self):
         super(CuttingBase, self).__init__()
-        self.do_stage4 = True
-        self.dict = {}
+        self.stage = 4
+        self.dict = get_dict(DICTS.SURNAME)
+        self.stop_dict = get_dict(DICTS.EXT_STOPWORD)
         
-        with codecs.open(dict_file, "r", "utf-8") as file:
-            for line in file:
-                self.dict[line.strip()] = True
-
     def cut_stage4(self, cuttor, sentence, graph, contex):
         start = contex['index']
         path = contex['path']
@@ -101,13 +173,11 @@ class SurnameCutting2(CuttingBase):
         i = start
         while i < n:
             klen = path[i]-path[i-1]
-            print i, klen
             if klen >= 1 and klen <= 2 and self.dict.has_key(sentence[path[i-1]:path[i]]):
-                print 'has_key', sentence[path[i-1]:path[i]]
                 if i < n-2:
                     klen2 = path[i+1]-path[i]
                     klen3 = path[i+2]-path[i+1]
-                    if klen2==1 and klen3==1:
+                    if klen2==1 and klen3==1 and not self.stop_dict.has_key(sentence[path[i+1]:path[i+2]]):
                         #get one name
                         new_path.append(path[i+2])
                         i += 3
@@ -131,6 +201,44 @@ class SurnameCutting2(CuttingBase):
             else:
                 #next stage to doit
                 return i
+        return i
+
+class SuffixCutting(CuttingBase):
+    def __init__(self):
+        super(CuttingBase, self).__init__()
+        self.stage = 4
+        self.dict = get_dict(DICTS.SUFFIX)
+        self.stop_dict = get_dict(DICTS.EXT_STOPWORD)
+    
+    def cut_stage4(self, cuttor, sentence, graph, contex):
+        start = contex['index']
+        path = contex['path']
+        new_path = contex['new_path']
+        n = len(path)
+        n2 = len(new_path)
+        i = start
+        modify = False
+
+        klen = path[i]-path[i-1]
+        if klen >= 1 and klen <= 2 and n2 > 2 and self.dict.has_key(sentence[path[i-1]:path[i]]):
+            j = n2-1
+            while j > 1:
+                klen2 = new_path[j]-new_path[j-1]
+                if klen2 == 1 and not self.stop_dict.has_key(sentence[new_path[j-1]:new_path[j]]):
+                    new_path.pop()
+                    contex['single'] -= 1
+                    modify = True
+                    j -= 1
+                    continue
+                if klen2 > 1 and cuttor.word_type(sentence[new_path[j-1]:new_path[j]], 'n'):
+                    new_path.pop()
+                    modify = True
+                break
+        if modify:
+            new_path.append(path[i])
+            return i+1
+        else:
+            return i
 
 #base_class
 class BaseCuttor(object):
@@ -150,14 +258,19 @@ class BaseCuttor(object):
         pass
     def get_prob(self, term):
         pass
+    def word_type(self, term, type):
+        return False
 
     def add_regex(self, rex, stage=2):
-        self.add_stage(RegexCutting(rex, stage), stage)
+        self.add_stage(RegexCutting(rex, stage))
 
-    def add_stage(self, obj, stage):
-        if stage < 1 or stage > 4:
+    def add_stage(self, obj, stage=-1):
+        new_stage = stage
+        if new_stage == -1:
+            new_stage = obj.stage
+        if new_stage < 1 or new_stage > 4:
             return
-        self.stages[stage-1].append(obj)
+        self.stages[new_stage-1].append(obj)
 
     def set_topk(self, topk):
         self.topk = topk
@@ -197,11 +310,10 @@ class BaseCuttor(object):
             contex = {'path':item['path'],'new_path':[0], 'single':0, 'index':1}
 
             # stage4
-            stage_iter = iter(self.stages[3])
             index = 1
             while index < len(item['path']):
                 i = index
-                for stage in stage_iter:
+                for stage in self.stages[3]:
                     i = stage.cut_stage4(self, sentence, graph, contex)
                 if i == index:
                     path = contex['path']
@@ -212,8 +324,8 @@ class BaseCuttor(object):
                 else:
                     index = i
                 contex['index'] = index
-            print contex
             paths.append(contex)
+            break
         sorted(paths, key=lambda p:p['single'])
         return paths[0]['new_path']
 
@@ -253,52 +365,28 @@ class BaseCuttor(object):
                 sentence = sentence.decode('gbk','ignore')
         return self.__cut_graph(sentence)
 
-class FileCuttor(BaseCuttor):
+class Cuttor(BaseCuttor):
     
-    def __init__(self, filename):
-        super(FileCuttor, self).__init__()
+    def __init__(self):
+        super(Cuttor, self).__init__()
         
         self.set_topk(3)
-        self.freq = collections.defaultdict(int)
-        self.total = 0
+        self.dict = get_dict(DICTS.MAIN)
 
-        with codecs.open(filename, "r", "utf-8") as file:
-            for line in file:
-                tokens = line.split(" ")
-                term = tokens[0].strip()
-                if len(tokens) >= 2:
-                    freq = int(tokens[1].strip())
-                    self.freq[term] = freq
-                    self.total += freq
-        self.freq = dict([(k,math.log(float(v)/self.total)) for k,v in self.freq.iteritems()]) #normalize
-
-        self.refer_prob =  (0-math.log(3.0/self.total))
+        self.refer_prob =  (0-math.log(3.0/self.dict.total))
         self.default_prob = 10.0*self.refer_prob
 
-        #self._log = lambda x: float('-inf') if not x else math.log(x)
-        #self._prob = lambda x: self.freq[x] if x in self.freq else 0 if len(x)>1 else 1
-
     def exist(self, term):
-        return (term in self.freq)
+        return (term in self.dict)
+    
+    def word_type(self, term, type):
+        word = self.dict[term]
+        return (word.type.find(type)>=0)
 
     def get_prob(self, term):
-        #return self._log(self._prob(sentence[idx:x+1])/self.total)
-        return self.freq.get(term, 0.0)
+        word = self.dict[term]
+        if word:
+            return word.base_ps
+        else:
+            return (0-self.default_prob)
 
-str = '唐成真是个好人'
-cuttor = FileCuttor('dict.txt')
-
-#cuttor.add_regex(re.compile('\d+', re.I|re.U))
-#surname = SurnameCutting('dict/surname.dic')
-#cuttor.add_stage(surname, 3)
-surname = SurnameCutting2('dict/surname.dic')
-cuttor.add_stage(surname, 4)
-
-seglist = cuttor.cut(str)
-print ','.join(list(seglist))
-#seglist = cuttor.cut_topk(str, 3)
-#for seg in seglist:
-#    print ','.join(seg)
-
-#for s in cut_to_sentence(str.decode('utf8')):
-#    print s
