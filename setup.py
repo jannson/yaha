@@ -7,5 +7,5 @@ setup(name='yaha',
       url='http://github.com/jannson/yaha',  
       packages=['yaha'],  
       package_dir={'yaha':'yaha'},
-      package_data={'yaha':['*.*','analyse/*']}
+      package_data={'yaha':['*.*','analyse/*','dict/*']}
 )
