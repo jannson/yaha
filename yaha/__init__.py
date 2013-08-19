@@ -2,6 +2,10 @@
 import sys, os.path, codecs, re, math
 import collections
 import threading
+import tempfile
+import random
+import cPickle as pickle
+import time
 
 # ksp_dijkstra for default
 from ksp_dijkstra import Graph, ksp_yen, quick_shortest
@@ -13,8 +17,6 @@ DICT_INIT = False
 class DICTS:
     LEN = 7
     MAIN,SURNAME,SUFFIX,EXT_STOPWORD,STOPWORD,QUANTIFIER,STOP_SENTENCE = range(7)
-    MAIN_DICT = {}
-    SURNAME_DICT = {}
     DEFAULT = ['dict.dic', 'surname.dic', 'suffix.dic', 'ext_stopword.dic','stopword.dic', 'quantifier.dic']
     DEFAULT_DICT = []
 
@@ -82,27 +84,67 @@ def get_dict(type):
             return DICTS.DEFAULT_DICT[type]
         
         print >> sys.stderr, 'Start load dict...'
-        #TODO use marshal.load to load more quickly
-        for i in xrange(0, DICTS.LEN-1, 1):
-            new_dict = DictBase()
-            curpath = os.path.normpath( os.path.join( os.getcwd(), os.path.dirname(__file__) )  )
-            with codecs.open(os.path.join(curpath, 'dict', DICTS.DEFAULT[i]), "r", "utf-8") as file:
-                for line in file:
-                    tokens = line.split(" ")
-                    term = tokens[0].strip()
-                    word = WordBase()
-                    if len(tokens) >= 2:
-                        word.base_freq = int(tokens[1].strip())
-                    if len(tokens) >= 3:
-                        word.type = tokens[2].strip()
-                    new_dict.add_term(term, word)
-            new_dict.normalize()
-            DICTS.DEFAULT_DICT.append(new_dict)
-            DICT_INIT = True
+        t1 = time.time()
+        curpath = os.path.normpath( os.path.join( os.getcwd(), os.path.dirname(__file__) )  )
+        tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
+        load_ok = True
 
-        # The sentence_dict is alwayse at last
-        DICTS.DEFAULT_DICT.append(__get_sentence_dict())
-        print >> sys.stderr, 'End load dict.'
+        # Use pickle to load dict
+        if os.path.exists(tmp_file):
+            tmp_file_time = os.path.getmtime(tmp_file)
+            for p in DICTS.DEFAULT:
+                if tmp_file_time < os.path.getmtime(os.path.join(curpath, 'dict', p)):
+                    load_ok = False
+                    break
+            if load_ok:
+                try:
+                    DICTS.DEFAULT_DICT = pickle.load(open(tmp_file, 'rb'))
+                    print >> sys.stderr, 'Load dict from: ' + tmp_file
+                except:
+                    DICTS.DEFUALT_DICT = []
+                    load_ok = False
+        else:
+            load_ok = False
+
+        if not load_ok:
+            for i in xrange(0, DICTS.LEN-1, 1):
+                new_dict = DictBase()
+                with codecs.open(os.path.join(curpath, 'dict', DICTS.DEFAULT[i]), "r", "utf-8") as file:
+                    for line in file:
+                        tokens = line.split(" ")
+                        term = tokens[0].strip()
+                        word = WordBase()
+                        if len(tokens) >= 2:
+                            word.base_freq = int(tokens[1].strip())
+                        if len(tokens) >= 3:
+                            word.type = tokens[2].strip()
+                        new_dict.add_term(term, word)
+                new_dict.normalize()
+                DICTS.DEFAULT_DICT.append(new_dict)
+
+            # The sentence_dict is alwayse at last
+            DICTS.DEFAULT_DICT.append(__get_sentence_dict())
+
+            # save to tempfile
+            tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
+            print >> sys.stderr, 'save dicts to tmp_file: ' + tmp_file
+            try:
+                tmp_suffix = "."+str(random.random())
+                with open(tmp_file+tmp_suffix,'wb') as temp_cache_file:
+                    pickle.dump(DICTS.DEFAULT_DICT, temp_cache_file, protocol=pickle.HIGHEST_PROTOCOL)
+                if os.name=='nt':
+                    import shutil
+                    replace_file = shutil.move
+                else:
+                    replace_file = os.rename
+                replace_file(tmp_file + tmp_suffix, tmp_file)
+            except:
+                print >> sys.stderr, "dump temp file failed."
+                import traceback
+                print >> sys.stderr, traceback.format_exc()
+
+        print >> sys.stderr, 'End load dict ', time.time() - t1, "seconds."
+        DICT_INIT = True
 
     return DICTS.DEFAULT_DICT[type]
 
