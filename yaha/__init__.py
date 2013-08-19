@@ -11,8 +11,8 @@ from ksp_dijkstra import Graph, ksp_yen, quick_shortest
 DICT_LOCK = threading.RLock()
 DICT_INIT = False
 class DICTS:
-    LEN = 6
-    MAIN,SURNAME,SUFFIX,EXT_STOPWORD,STOPWORD,QUANTIFIER = range(6)
+    LEN = 7
+    MAIN,SURNAME,SUFFIX,EXT_STOPWORD,STOPWORD,QUANTIFIER,STOP_SENTENCE = range(7)
     MAIN_DICT = {}
     SURNAME_DICT = {}
     DEFAULT = ['dict.dic', 'surname.dic', 'suffix.dic', 'ext_stopword.dic','stopword.dic', 'quantifier.dic']
@@ -58,6 +58,19 @@ class DictBase(object):
     def has_key(self, term):
         return self._data.has_key(term)
 
+def __get_sentence_dict():
+    cutlist = " .[。，,！……!《》<>\"':：？\?、\|“”‘’；]{}（）{}【】()｛｝（）：？！。，;、~——+％%`:“”＂'‘\n\r"
+    if not isinstance(cutlist, unicode):
+        try:
+            cutlist = cutlist.decode('utf-8')
+        except UnicodeDecodeError:
+            cutlist = cutlist.decode('gbk','ignore')
+    cutlist_dict = {}
+    for c in list(cutlist):
+        word = WordBase()
+        cutlist_dict[c] = word
+    return cutlist_dict
+
 def get_dict(type):
     global DICT_INIT
     if type < 0 or type >= DICTS.LEN:
@@ -69,7 +82,8 @@ def get_dict(type):
             return DICTS.DEFAULT_DICT[type]
         
         print >> sys.stderr, 'Start load dict...'
-        for i in xrange(0, DICTS.LEN, 1):
+        #TODO use marshal.load to load more quickly
+        for i in xrange(0, DICTS.LEN-1, 1):
             new_dict = DictBase()
             curpath = os.path.normpath( os.path.join( os.getcwd(), os.path.dirname(__file__) )  )
             with codecs.open(os.path.join(curpath, 'dict', DICTS.DEFAULT[i]), "r", "utf-8") as file:
@@ -85,35 +99,18 @@ def get_dict(type):
             new_dict.normalize()
             DICTS.DEFAULT_DICT.append(new_dict)
             DICT_INIT = True
+
+        # The sentence_dict is alwayse at last
+        DICTS.DEFAULT_DICT.append(__get_sentence_dict())
         print >> sys.stderr, 'End load dict.'
 
     return DICTS.DEFAULT_DICT[type]
-
-cutlist = " .[。，,！……!《》<>\"':：？\?、\|“”‘’；]{}（）{}【】()｛｝（）：？！。，;、~——+％%`:“”＂'‘\n\r"
-if not isinstance(cutlist, unicode):
-    try:
-        cutlist = cutlist.decode('utf-8')
-    except UnicodeDecodeError:
-        cutlist = cutlist.decode('gbk','ignore')
-cutlist_dict = {}
-for c in list(cutlist):
-    cutlist_dict[c] = True
-def cut_to_sentence(line):
-    str = ''
-    for c in line:
-        if cutlist_dict.has_key(c):
-            yield str
-            str = ''
-        else:
-            str += c
-    if str != '':
-        yield str
 
 class CuttingBase(object):
     def __init__(self):
         self.stage = -1
 
-    #def cut_stage1(self, cuttor, sentence, graph):
+    #def cut_stage1(self, cuttor, sentence):
     #    pass
     #def cut_stage2(self, cuttor, sentence, graph):
     #    pass
@@ -123,20 +120,17 @@ class CuttingBase(object):
     #    pass
 
 class RegexCutting(CuttingBase):
-    def __init__(self, rex, stage):
+    # Not surpport stage 1 now
+    def __init__(self, rex, stage=2):
         super(CuttingBase, self).__init__()
-        if stage == 1:
-            self.stage = 1
-            # TODO
-        else:
-            self.stage = 2
-            self.cut_stage2 = self.cut_regex
+        self.stage = 2
+        #self.cut_stage2 = self.cut_regex
         self.rex = rex
 
-    def cut_regex(self, cuttor, sentence, graph):
+    def cut_stage2(self, cuttor, sentence, graph):
         for m in self.rex.finditer(sentence):
             graph.add_edge(m.start(0),m.end(0), cuttor.default_prob)
-
+    
 class SurnameCutting(CuttingBase):
     def __init__(self):
         super(CuttingBase, self).__init__()
@@ -173,6 +167,7 @@ class SurnameCutting2(CuttingBase):
         i = start
         while i < n:
             klen = path[i]-path[i-1]
+            #print 'surname', klen, sentence[path[i-1]:path[i]]
             if klen >= 1 and klen <= 2 and self.dict.has_key(sentence[path[i-1]:path[i]]):
                 if i < n-2:
                     klen2 = path[i+1]-path[i]
@@ -218,6 +213,8 @@ class SuffixCutting(CuttingBase):
         n2 = len(new_path)
         i = start
         modify = False
+        
+        #print 'suffix', i, sentence[path[i-1]:path[i]]
 
         klen = path[i]-path[i-1]
         if klen >= 1 and klen <= 2 and n2 > 2 and self.dict.has_key(sentence[path[i-1]:path[i]]):
@@ -243,7 +240,9 @@ class SuffixCutting(CuttingBase):
 #base_class
 class BaseCuttor(object):
     def __init__(self):
-        self.WORD_MAX = 8
+        #self.WORD_MAX = 8
+        # Use 6 is better, but it will not cut the word longer than 5
+        self.WORD_MAX = 6
         self.refer_prob = 15.0
         self.default_prob = 150.0
         self.topk = 1
@@ -253,6 +252,9 @@ class BaseCuttor(object):
         self.stages.append([])
         self.stages.append([])
         self.stages.append([])
+        self.sentence_dict = get_dict(DICTS.STOP_SENTENCE)
+        self.stage1_regex = None
+        self.fn_stage1 = self.__stage1_null
 
     def exist(self, term):
         pass
@@ -261,8 +263,45 @@ class BaseCuttor(object):
     def word_type(self, term, type):
         return False
 
-    def add_regex(self, rex, stage=2):
-        self.add_stage(RegexCutting(rex, stage))
+    def cut_to_sentence(self, line):
+        if not isinstance(line, unicode):
+            try:
+                line = line.decode('utf-8')
+            except UnicodeDecodeError:
+                line = line.decode('gbk','ignore')
+        str = ''
+        for c in line:
+            if self.sentence_dict.has_key(c):
+                # stage 1
+                for s,need_cut in self.fn_stage1(str):
+                    yield (s, need_cut)
+
+                str = ''
+                yield (c, False)
+            else:
+                str += c
+        if str != '':
+            for s,need_cut in self.fn_stage1(str):
+                yield (s, need_cut)
+
+    # Only support one regex for stage1 now
+    def set_stage1_regex(self, rex):
+        if type(rex) == str:
+            self.stage1_regex = re.compile(rex, re.I|re.U)
+        else:
+            self.stage1_regex = rex
+        self.fn_stage1 = self.__do_stage1
+
+    def __stage1_null(self, sentence):
+        yield (sentence, True)
+
+    def __do_stage1(self, sentence):
+        start = 0
+        for m in self.stage1_regex.finditer(sentence):
+            yield (sentence[start:m.start(0)], True)
+            yield (sentence[m.start(0):m.end(0)], False)
+            start = m.end(0)
+        yield (sentence[start:], True)
 
     def add_stage(self, obj, stage=-1):
         new_stage = stage
@@ -299,33 +338,41 @@ class BaseCuttor(object):
             i += 1
             j = i
         return graph
+    def __new_path(self, sentence, graph, contex):
+        path = contex['path']
+        # stage4
+        index = 1
+        n_path = len(path)
+        #print item['path']
+        while index < n_path:
+            i = index
+            for stage in self.stages[3]:
+                i = stage.cut_stage4(self, sentence, graph, contex)
+                if i >= n_path:
+                    break
+                #print 'index', i
+                contex['index'] = i
+            if i >= n_path:
+                break
+            if path[i]-path[i-1] == 1:
+                contex['single'] += 1
+            contex['new_path'].append(path[i])
+            index = i+1
+            contex['index'] = index
 
     def __cut_graph_simple(self, sentence, graph):
         (_, path) = quick_shortest(graph)
-        return path
+        contex = {'path':path,'new_path':[0], 'single':0, 'index':1}
+        self.__new_path(sentence, graph, contex=contex)
+        return contex['new_path']
 
     def choise_best(self, sentence, graph, items):
         paths = []
         for item in items:
-            contex = {'path':item['path'],'new_path':[0], 'single':0, 'index':1}
-
-            # stage4
-            index = 1
-            while index < len(item['path']):
-                i = index
-                for stage in self.stages[3]:
-                    i = stage.cut_stage4(self, sentence, graph, contex)
-                if i == index:
-                    path = contex['path']
-                    if path[i]-path[i-1] == 1:
-                        contex['single'] += 1
-                    contex['new_path'].append(path[i])
-                    index += 1
-                else:
-                    index = i
-                contex['index'] = index
+            path = item['path']
+            contex = {'path':path,'new_path':[0], 'single':0, 'index':1}
+            self.__new_path(sentence, graph, contex=contex)
             paths.append(contex)
-            break
         sorted(paths, key=lambda p:p['single'])
         return paths[0]['new_path']
 
@@ -358,19 +405,21 @@ class BaseCuttor(object):
             yield words
 
     def cut(self, sentence):
-        if not isinstance(sentence, unicode):
-            try:
-                sentence = sentence.decode('utf-8')
-            except UnicodeDecodeError:
-                sentence = sentence.decode('gbk','ignore')
-        return self.__cut_graph(sentence)
+        for s,need_cut in self.cut_to_sentence(sentence):
+            if need_cut and s == '':
+                continue
+            elif need_cut:
+                for word in self.__cut_graph(s):
+                    yield word
+            else:
+                yield s
 
 class Cuttor(BaseCuttor):
     
     def __init__(self):
         super(Cuttor, self).__init__()
         
-        self.set_topk(3)
+        #self.set_topk(3)
         self.dict = get_dict(DICTS.MAIN)
 
         self.refer_prob =  (0-math.log(3.0/self.dict.total))
@@ -381,7 +430,9 @@ class Cuttor(BaseCuttor):
     
     def word_type(self, term, type):
         word = self.dict[term]
-        return (word.type.find(type)>=0)
+        if word:
+            return (word.type.find(type)>=0)
+        return False
 
     def get_prob(self, term):
         word = self.dict[term]

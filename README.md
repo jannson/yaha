@@ -1,7 +1,7 @@
 Yaha分词
 ========
 "哑哈"中文分词，更快或更准确，由你来定义。通过简单定制，让分词模块更适用于你的需求。
-"Yaha" You can custom your Chinese Word Segmentation efficiently by using
+"Yaha" You can custom your Chinese Word Segmentation efficiently by using Yaha
 
 
 Feature
