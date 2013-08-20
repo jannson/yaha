@@ -224,7 +224,7 @@ class SurnameCutting2(CuttingBase):
                         i += 2
                     if klen2==2:
                         new_path.append(path[i+1])
-                        i += 3
+                        i += 2
                         continue
                 elif i < n-1:
                     klen2 = path[i+1]-path[i]
@@ -380,6 +380,7 @@ class BaseCuttor(object):
             i += 1
             j = i
         return graph
+
     def __new_path(self, sentence, graph, contex):
         path = contex['path']
         # stage4
