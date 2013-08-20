@@ -28,6 +28,9 @@ class Graph:
     
     def __iter__(self):
         return self._data.__iter__()
+
+    def iteritems(self):
+        return self._data.iteritems()
     
     def add_edge(self, node_from, node_to, cost=None):
         if not cost:

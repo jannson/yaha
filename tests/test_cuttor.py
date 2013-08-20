@@ -28,7 +28,7 @@ suffix = SuffixCutting()
 cuttor.add_stage(suffix)
 
 seglist = cuttor.cut(str)
-print ','.join(list(seglist))
+print '\nCut with name \n%s\n' % ','.join(list(seglist))
 
 #seglist = cuttor.cut_topk(str, 3)
 #for seg in seglist:
@@ -36,3 +36,21 @@ print ','.join(list(seglist))
 
 #for s in cuttor.cut_to_sentence(str):
 #    print s
+
+str = "伟大祖国是中华人民共和国"
+
+#You can set WORD_MAX to 8 for better match
+#cuttor.WORD_MAX = 8
+
+#Normal cut
+seglist = cuttor.cut(str)
+print 'Normal cut \n%s\n' % ','.join(list(seglist))
+
+#All cut
+seglist = cuttor.cut_all(str)
+print 'All cut \n%s\n' % ','.join(list(seglist))
+
+#Tokenize for search
+print 'Cut for search (term,start,end)'
+for term, start, end in cuttor.tokenize(str.decode('utf-8'), search=True):
+    print term, start, end

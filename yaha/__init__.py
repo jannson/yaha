@@ -429,6 +429,19 @@ class BaseCuttor(object):
         for i in xrange(1, len(path), 1):
             yield sentence[path[i-1]:path[i]]
 
+    def __cut_all(self, sentence):
+        graph = self.get_graph(sentence)
+
+        old_j = -1
+        for k,v in graph.iteritems():
+            if len(v) == 1 and k > old_j:
+                yield sentence[k:k+1]
+            else:
+                for j,_p in v.iteritems():
+                    if j > k+1:
+                        yield sentence[k:j]
+                        old_j = j-1
+
     def cut_topk(self, sentence, topk):
         if not isinstance(sentence, unicode):
             try:
@@ -448,13 +461,48 @@ class BaseCuttor(object):
 
     def cut(self, sentence):
         for s,need_cut in self.cut_to_sentence(sentence):
-            if need_cut and s == '':
+            if s == '':
                 continue
             elif need_cut:
                 for word in self.__cut_graph(s):
                     yield word
             else:
                 yield s
+
+    def cut_all(self, sentence):
+        for s,need_cut in self.cut_to_sentence(sentence):
+            if s == '':
+                continue
+            elif need_cut:
+                for word in self.__cut_all(s):
+                    yield word
+            else:
+                yield s
+    
+    def tokenize(self, unicode_sentence, search = False):
+        if not isinstance(unicode_sentence, unicode):
+            raise Exception("Yaha: the input parameter should be unicode.")
+        start = 0
+        if search:
+            for term in self.cut(unicode_sentence):
+                width = len(term)
+                if width > 2:
+                    for i in xrange(width - 1):
+                        gram2 = term[i:i+2]
+                        if self.exist(gram2):
+                            yield (gram2,start+i,start+i+2)
+                if width > 3:
+                    for i in xrange(width - 2):
+                        gram3 = term[i:i+3]
+                        if self.exist(gram3):
+                            yield (gram3, start+i, start+i+3)
+                yield (term, start, start+width)
+                start += width
+        else:
+            for term in self.cut(unicode_sentence):
+                width = len(term)
+                yield (term, start, start+width)
+                start += width
 
 class Cuttor(BaseCuttor):
     
@@ -468,7 +516,10 @@ class Cuttor(BaseCuttor):
         self.default_prob = 10.0*self.refer_prob
 
     def exist(self, term):
-        return (term in self.dict)
+        word = self.dict[term]
+        if word and word.base_freq > 0:
+            return True
+        return False
     
     def word_type(self, term, type):
         word = self.dict[term]
