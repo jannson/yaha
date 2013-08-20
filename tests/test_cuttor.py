@@ -1,6 +1,8 @@
 # -*- coding=utf-8 -*-
-import sys, re
-from yaha import Cuttor, RegexCutting, SurnameCutting2, SuffixCutting
+import sys, re, codecs
+import cProfile
+from yaha import Cuttor, RegexCutting, SurnameCutting, SurnameCutting2, SuffixCutting
+from yaha.wordmaker import WordDict
 
 str = '唐成真是唐成牛的长寿乡是个1998love唐成真诺维斯基'
 cuttor = Cuttor()
@@ -37,7 +39,8 @@ print '\nCut with name \n%s\n' % ','.join(list(seglist))
 #for s in cuttor.cut_to_sentence(str):
 #    print s
 
-str = "伟大祖国是中华人民共和国"
+#str = "伟大祖国是中华人民共和国"
+str = "九孔不好看来"
 
 #You can set WORD_MAX to 8 for better match
 #cuttor.WORD_MAX = 8
@@ -54,3 +57,27 @@ print 'All cut \n%s\n' % ','.join(list(seglist))
 print 'Cut for search (term,start,end)'
 for term, start, end in cuttor.tokenize(str.decode('utf-8'), search=True):
     print term, start, end
+
+re_line = re.compile("\W+|[a-zA-Z0-9]+", re.UNICODE)
+def sentence_from_file(filename):
+    with codecs.open(filename, 'r', 'utf-8') as file:
+        for line in file:
+            for sentence in re_line.split(line):
+                yield sentence
+
+def make_new_word(file_from, file_save):
+    word_dict = WordDict()
+    #word_dict.add_user_dict('www_qq0')
+    for sentence in sentence_from_file(file_from):
+        word_dict.learn(sentence)
+    word_dict.learn_flush()
+    
+    str = '我们的读书会也顺利举办了四期'
+    seg_list = word_dict.cut(str)
+    print ', '.join(seg_list)
+
+    word_dict.save_to_file(file_save)
+
+#make_new_word('qq0', 'www_qq0')
+#cProfile.run('test()')
+#test()

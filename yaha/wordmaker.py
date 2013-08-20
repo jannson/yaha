@@ -1,18 +1,18 @@
 # -*- coding=utf-8 -*-
 import sys
-
 import os, codecs, re, math
-import cProfile
 import collections
-from prob_cut import BaseCutter
+import threading
+from yaha import BaseCuttor, WordBase, get_dict, DICTS
 
 max_word_len = 5 
 entropy_threshold = 1 
-re_line = re.compile("\W+|[a-zA-Z0-9]+", re.UNICODE)
-accepted_line = re.compile(ur"(\d+-\d+-\d+|\[[^\]]+\])")
+max_to_flush = 10000
 
-class Word:
+class Word(WordBase):
     def __init__(self, id):
+        super(WordBase, self).__init__()
+
         self.process_freq = 1
         self.total_freq = 1
         self.valid = 0
@@ -51,6 +51,39 @@ class Word:
         self.r_len = 0
         self.l = collections.Counter()
         self.r = collections.Counter()
+
+# TODO has a better implement?
+# How to add fields to Objects dynamically ?
+MODIFY_LOCK = threading.RLock()
+MODIFY_INIT = False
+def modify_wordbase(word):
+        word.process_freq = 1
+        word.total_freq = 1
+        word.valid = 0
+        word.process_ps = 0.0
+        word.id = id
+        word.l_len = 0
+        word.r_len = 0
+        word.l = collections.Counter()
+        word.r = collections.Counter()
+        word.curr_ps = word.base_ps
+        word.add = Word.add
+        word.add_l = Word.add_l
+        word.add_r = Word.add_r
+        word.reset = Word.reset
+
+def get_modified_dict():
+    global MODIFY_INIT
+    dict = get_dict(DICTS.MAIN)
+    if MODIFY_INIT:
+        return dict
+    with MODIFY_LOCK:
+        if MODIFY_INIT:
+            return dict
+        for word in dict:
+            modify_wordbase(word)
+        MODIFY_INIT = True
+    return dict
 
 def info_entropy(words, total):
     result = 0 
@@ -100,18 +133,18 @@ class Process(object):
                     t = word_dict.ps(word[0:i]) * word_dict.ps(word[i:])
                     p = max(p, t)
                 if p > 0 and this_word.process_freq >= 3 and this_word.process_ps / p > 100:
-                    left_info_entropy = info_entropy(this_word.l, this_word.l_len)
-                    right_info_entropy = info_entropy(this_word.r, this_word.r_len)
-                    if this_word.l_len > 0 and left_info_entropy < entropy_threshold:
+                    if this_word.l_len > 0 and info_entropy(this_word.l, this_word.l_len) < entropy_threshold:
                         continue
-                    if this_word.r_len > 0 and right_info_entropy < entropy_threshold:
+                    if this_word.r_len > 0 and info_entropy(this_word.r, this_word.r_len) < entropy_threshold:
                         continue
                     this_word.valid += 1
                     this_word.curr_ps = math.log(float(this_word.total_freq+this_word.base_freq)/float(word_dict.base_total+word_dict.total/word_dict.id))
 
 class WordDict(BaseCuttor):
 
-    def __init__(self, base_dict):
+    def __init__(self, new_dict=True):
+        super(WordDict, self).__init__()
+
         self.dict = {}
         self.total = 0
         self.base_total = 0
@@ -121,7 +154,7 @@ class WordDict(BaseCuttor):
         
         self.WORD_MAX = 5
         
-        with codecs.open(base_dict, "r", "utf-8") as file:
+        '''with codecs.open(dict_file, "r", "utf-8") as file:
             for line in file:
                 tokens = line.split(" ")
                 word = tokens[0].strip()
@@ -135,7 +168,11 @@ class WordDict(BaseCuttor):
         #normalize
         for word, term in self.dict.iteritems():
             term.base_ps = math.log(float(term.base_freq)/self.base_total)
-            term.curr_ps = term.base_ps
+            term.curr_ps = term.base_ps'''
+
+        if not new_dict:
+            # TODO for getting dict from MAIN_DICT
+            self.dict = get_modified_dict()
 
         self.new_process()
 
@@ -196,12 +233,15 @@ class WordDict(BaseCuttor):
         return this_word
 
     def learn(self, sentence):
-        self.process.do_sentence(sentence, self)
-        self.current_line += 1
-        if self.current_line > 10000:
-            self.process.calc(self)
-            self.new_process()
-            self.current_line = 0
+        for s,need_cut in self.cut_to_sentence(sentence):
+            if not need_cut:
+                continue
+            self.process.do_sentence(s, self)
+            self.current_line += 1
+            if self.current_line > max_to_flush:
+                self.process.calc(self)
+                self.new_process()
+                self.current_line = 0
 
     def learn_flush(self):
         self.process.calc(self)
@@ -234,42 +274,18 @@ class WordDict(BaseCuttor):
     def get_word(self, word):
         return self.dict[word]
 
-def sentence_from_file(filename):
-    with codecs.open(filename, 'r', 'utf-8') as file:
-        for line in file:
-            if not accepted_line.match(line):
-                for sentence in re_line.split(line):
-                    yield sentence
+    def save_to_file(self, filename):
+        word_dict = self
+        final_words = [] 
+        for word, term in word_dict.dict.iteritems():
+            #if term.valid > word_dict.id/2 and term.base_freq == 0:
+            # Use this to save more word
+            if term.valid > 0 and term.base_freq == 0:
+                final_words.append(word)
 
-def save_to_file(filename, word_dict):
-    final_words = [] 
-    for word, term in word_dict.dict.iteritems():
-        if term.valid > word_dict.id/2 and term.base_freq == 0:
-            final_words.append(word)
-
-    final_words.sort(cmp = lambda x, y: cmp(word_dict.get_word(y).total_freq, word_dict.get_word(x).total_freq))
-    
-    file = open(filename, 'w')
-
-    for word in final_words:
-        v = word_dict.get_word(word).total_freq
-        file.write("%s %d\n" % (word,v))
-
-    file.close()
-
-def test():
-    filename = 'qq6'
-    word_dict = WordDict('dict.txt')
-    #for sentence in sentence_from_file(filename):
-    #    word_dict.learn(sentence)
-    #word_dict.learn_flush()
-    word_dict.add_user_dict('www_qq0')
-    
-    str = '我们的读书会也顺利举办了四期'
-    seg_list = word_dict.cut(str)
-    print ', '.join(seg_list)
-
-    #save_to_file('www_'+filename, word_dict)
-
-#cProfile.run('test()')
-test()
+        final_words.sort(cmp = lambda x, y: cmp(word_dict.get_word(y).total_freq, word_dict.get_word(x).total_freq))
+        
+        with codecs.open(filename, 'w', 'utf-8') as file:
+            for word in final_words:
+                v = word_dict.get_word(word).total_freq
+                file.write("%s %d\n" % (word,v))

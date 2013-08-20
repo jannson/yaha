@@ -45,6 +45,9 @@ class DictBase(object):
     
     def __iter__(self):
         return self._data.__iter__()
+
+    def iteritems(self):
+        return self._data.iteritems()
     
     def add_term(self, term, word):
         self._data[term] = word
