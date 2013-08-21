@@ -40,9 +40,10 @@ cuttor.add_stage(suffix)
 #for s in cuttor.cut_to_sentence(str):
 #    print s
 
-str = "伟大祖国是中华人民共和国"
+#str = "伟大祖国是中华人民共和国"
 #str = "九孔不好看来"
 #str = "而迈入社会后..."
+str = "工信处女干事每月经过下属科室都要亲口交代24口交换机等技术性器件的安装工作"
 
 #You can set WORD_MAX to 8 for better match
 #cuttor.WORD_MAX = 8
@@ -93,9 +94,9 @@ def key_word_test():
         content = file.read()
         keys = extract_keywords(content)
         print ','.join(keys)
-        print summarize1(content)
+        #print summarize1(content)
         print summarize2(content)
-        print summarize3(content)
+        #print summarize3(content)
 #key_word_test()
 
 #比较文本的相似度

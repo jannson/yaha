@@ -6,6 +6,7 @@ import threading
 import codecs
 from math import sqrt
 from yaha import DICTS, get_dict, Cuttor
+from analyzer import ChineseAnalyzer
 
 IDF_LOCK = threading.RLock()
 IDF_INIT = False
