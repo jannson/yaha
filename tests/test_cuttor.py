@@ -3,7 +3,7 @@ import sys, re, codecs
 import cProfile
 from yaha import Cuttor, RegexCutting, SurnameCutting, SurnameCutting2, SuffixCutting
 from yaha.wordmaker import WordDict
-from yaha.analyse import extract_keywords, near_duplicate
+from yaha.analyse import extract_keywords, near_duplicate, summarize1, summarize2, summarize3
 
 str = '唐成真是唐成牛的长寿乡是个1998love唐成真诺维斯基'
 cuttor = Cuttor()
@@ -93,6 +93,9 @@ def key_word_test():
         content = file.read()
         keys = extract_keywords(content)
         print ','.join(keys)
+        print summarize1(content)
+        print summarize2(content)
+        print summarize3(content)
 #key_word_test()
 
 #比较文本的相似度
@@ -100,4 +103,4 @@ def compare_file():
     file1 = codecs.open('f1.txt', 'r', 'utf-8')
     file2 = codecs.open('f2.txt', 'r', 'utf-8')
     print 'the near of two files is:', near_duplicate(file1.read(), file2.read())
-compare_file()
+#compare_file()

@@ -132,3 +132,144 @@ def near_duplicate(content1, content2, cuttor=None):
 
     rate = sum_2/(sqrt(sum_file1*sum_file2))
     return rate
+
+def __search_word(sentences, word):
+    for s in sentences:
+        if s.find(word)>=0:
+            return s
+    return ''
+
+def summarize1(original_text, summary_size = 8, cuttor = None):
+    if cuttor:
+        tmp_cuttor = cuttor
+    else:
+        tmp_cuttor = Cuttor()
+        tmp_cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))
+
+    words_sorted = extract_keywords(original_text, 16, cuttor)
+    summary_set = {}
+    sentences = []
+    for s,need in tmp_cuttor.cut_to_sentence(original_text):
+        if need:
+            sentences.append(s)
+
+    for word in words_sorted:
+        matching_sentence = __search_word(sentences, word)
+        if matching_sentence <> '':
+            summary_set[matching_sentence] = 1
+            if len(summary_set) >= summary_size:
+                break
+    summary = []
+    for s in sentences:
+        if s in summary_set:
+            summary.append(s)
+    return ', '.join(summary)+'.'
+
+N = 80  # Number of words to consider
+CLUSTER_THRESHOLD = 5  # Distance between words to consider
+TOP_SENTENCES = 8  # Number of sentences to return for a "top n" summary
+
+def __score_sentences(sentences, important_words, cuttor):
+    scores = []
+    sentence_idx = -1
+
+    for s in [list(cuttor.cut(s)) for s in sentences]:
+        sentence_idx += 1
+        word_idx = []
+
+        # For each word in the word list...
+        for w in important_words:
+            try:
+                # Compute an index for where any important words occur in the sentence
+
+                word_idx.append(s.index(w))
+            except ValueError, e: # w not in this particular sentence
+                pass
+
+        word_idx.sort()
+
+        # It is possible that some sentences may not contain any important words at all
+        if len(word_idx)== 0: continue
+
+        # Using the word index, compute clusters by using a max distance threshold
+        # for any two consecutive words
+
+        clusters = []
+        cluster = [word_idx[0]]
+        i = 1
+        while i < len(word_idx):
+            if word_idx[i] - word_idx[i - 1] < CLUSTER_THRESHOLD:
+                cluster.append(word_idx[i])
+            else:
+                clusters.append(cluster[:])
+                cluster = [word_idx[i]]
+            i += 1
+        clusters.append(cluster)
+
+        # Score each cluster. The max score for any given cluster is the score 
+        # for the sentence
+
+        max_cluster_score = 0
+        for c in clusters:
+            significant_words_in_cluster = len(c)
+            total_words_in_cluster = c[-1] - c[0] + 1
+            score = 1.0 * significant_words_in_cluster \
+                * significant_words_in_cluster / total_words_in_cluster
+
+            if score > max_cluster_score:
+                max_cluster_score = score
+
+        scores.append((sentence_idx, score))
+    return scores
+
+def summarize2(txt, cuttor=None):
+    if cuttor:
+        tmp_cuttor = cuttor
+    else:
+        tmp_cuttor = Cuttor()
+        tmp_cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))
+    
+    sentences = []
+    #TODO do it better 21/08/13 12:36:08
+    for s,need in tmp_cuttor.cut_to_sentence(txt):
+        if need:
+            sentences.append(s)
+    normalized_sentences = [s.lower() for s in sentences]
+
+    top_n_words = extract_keywords(txt, N, tmp_cuttor)
+    scored_sentences = __score_sentences(normalized_sentences, top_n_words, tmp_cuttor)
+
+    top_n_scored = sorted(scored_sentences, key=lambda s: s[1])[-TOP_SENTENCES:]
+    top_n_scored = sorted(top_n_scored, key=lambda s: s[0])
+    top_n_summary=[sentences[idx] for (idx, score) in top_n_scored]
+    return ', '.join(top_n_summary) + '.'
+
+#
+def summarize3(txt, cuttor=None):
+    # TODO how to do this better 21/08/13 13:07:22
+    # You can replace this with "import numpy", and of cause you have to
+    # install the lib numpy
+    name = "numpy"
+    numpy = __import__(name, fromlist=[])
+
+    if cuttor:
+        tmp_cuttor = cuttor
+    else:
+        tmp_cuttor = Cuttor()
+        tmp_cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))
+    
+    sentences = []
+    #TODO do it better 21/08/13 12:36:08
+    for s,need in tmp_cuttor.cut_to_sentence(txt):
+        if need:
+            sentences.append(s)
+    normalized_sentences = [s.lower() for s in sentences]
+
+    top_n_words = extract_keywords(txt, N, tmp_cuttor)
+    scored_sentences = __score_sentences(normalized_sentences, top_n_words, tmp_cuttor)
+    avg = numpy.mean([s[1] for s in scored_sentences])
+    std = numpy.std([s[1] for s in scored_sentences])
+    mean_scored = [(sent_idx, score) for (sent_idx, score) in scored_sentences
+                   if score > avg + 0.5 * std]
+    mean_scored_summary=[sentences[idx] for (idx, score) in mean_scored]
+    return ', '.join(mean_scored_summary) + '.'
