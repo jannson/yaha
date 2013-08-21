@@ -1,7 +1,9 @@
 from distutils.core import setup  
 setup(name='yaha',
       version='0.01.alpha',  
-      description='Chinese Words Segementation Utilities',  
+      keywords=('word', 'segmenetation', 'keyword', 'summerize'),
+      description='Chinese Words Segementation Utilities',
+      license = 'MIT License',
       author='Janson, Yuzheng',  
       author_email='gandancing@gmail.com',  
       url='http://github.com/jannson/yaha',  
