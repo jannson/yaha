@@ -170,8 +170,14 @@ def quick_shortest(graph):
             Q[x] = graph[idx][x] + distances[x]
         
         small = Q.smallest()
-        previous[small] = idx
+        previous[idx] = small
         distances[idx] = Q[small]
-    
-    return (distances, path(previous, 0, N))
+    # get path from previous 21/08/13 09:10:14
+    paths = []
+    paths.append(0)
+    start = 0
+    while start < N:
+        paths.append(previous[start])
+        start = previous[start]
+    return (distances, paths)
 

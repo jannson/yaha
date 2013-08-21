@@ -3,6 +3,7 @@ import sys, re, codecs
 import cProfile
 from yaha import Cuttor, RegexCutting, SurnameCutting, SurnameCutting2, SuffixCutting
 from yaha.wordmaker import WordDict
+from yaha.analyse import extract_keywords, near_duplicate
 
 str = '唐成真是唐成牛的长寿乡是个1998love唐成真诺维斯基'
 cuttor = Cuttor()
@@ -29,8 +30,8 @@ cuttor.add_stage(surname)
 suffix = SuffixCutting()
 cuttor.add_stage(suffix)
 
-seglist = cuttor.cut(str)
-print '\nCut with name \n%s\n' % ','.join(list(seglist))
+#seglist = cuttor.cut(str)
+#print '\nCut with name \n%s\n' % ','.join(list(seglist))
 
 #seglist = cuttor.cut_topk(str, 3)
 #for seg in seglist:
@@ -39,8 +40,9 @@ print '\nCut with name \n%s\n' % ','.join(list(seglist))
 #for s in cuttor.cut_to_sentence(str):
 #    print s
 
-#str = "伟大祖国是中华人民共和国"
-str = "九孔不好看来"
+str = "伟大祖国是中华人民共和国"
+#str = "九孔不好看来"
+#str = "而迈入社会后..."
 
 #You can set WORD_MAX to 8 for better match
 #cuttor.WORD_MAX = 8
@@ -78,6 +80,24 @@ def make_new_word(file_from, file_save):
 
     word_dict.save_to_file(file_save)
 
-#make_new_word('qq0', 'www_qq0')
+#最大熵算法得到新词
+#def test():
+#   make_new_word('qq0', 'www_qq0')
 #cProfile.run('test()')
 #test()
+
+#test: Get key words from file
+def key_word_test():
+    filename = 'key_test.txt'
+    with codecs.open(filename, 'r', 'utf-8') as file:
+        content = file.read()
+        keys = extract_keywords(content)
+        print ','.join(keys)
+#key_word_test()
+
+#比较文本的相似度
+def compare_file():
+    file1 = codecs.open('f1.txt', 'r', 'utf-8')
+    file2 = codecs.open('f2.txt', 'r', 'utf-8')
+    print 'the near of two files is:', near_duplicate(file1.read(), file2.read())
+compare_file()
