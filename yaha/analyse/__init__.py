@@ -166,7 +166,6 @@ def summarize1(original_text, summary_size = 8, cuttor = None):
             summary.append(s)
     return ', '.join(summary)+'.'
 
-N = 80  # Number of words to consider
 CLUSTER_THRESHOLD = 5  # Distance between words to consider
 TOP_SENTENCES = 8  # Number of sentences to return for a "top n" summary
 
@@ -223,6 +222,7 @@ def __score_sentences(sentences, important_words, cuttor):
         scores.append((sentence_idx, score))
     return scores
 
+N_2 = 68  # Number of words to consider
 def summarize2(txt, cuttor=None):
     if cuttor:
         tmp_cuttor = cuttor
@@ -237,7 +237,7 @@ def summarize2(txt, cuttor=None):
             sentences.append(s)
     normalized_sentences = [s.lower() for s in sentences]
 
-    top_n_words = extract_keywords(txt, N, tmp_cuttor)
+    top_n_words = extract_keywords(txt, N_2, tmp_cuttor)
     scored_sentences = __score_sentences(normalized_sentences, top_n_words, tmp_cuttor)
 
     top_n_scored = sorted(scored_sentences, key=lambda s: s[1])[-TOP_SENTENCES:]
@@ -245,14 +245,18 @@ def summarize2(txt, cuttor=None):
     top_n_summary=[sentences[idx] for (idx, score) in top_n_scored]
     return ', '.join(top_n_summary) + '.'
 
-#
-def summarize3(txt, cuttor=None):
-    # TODO how to do this better 21/08/13 13:07:22
-    # You can replace this with "import numpy", and of cause you have to
-    # install the lib numpy
-    name = "numpy"
-    numpy = __import__(name, fromlist=[])
+def _mean_std(l):
+    ln = len(l)
+    if ln <= 0:
+        return (0.0,0.0)
+    mean = sum(l,0.0)/ln
+    d = [(i-mean)**2 for i in l]
+    std_dev = math.sqrt(sum(d)/len(d))
+    return (mean, std_dev)
 
+N_3 = 80  # Number of words to consider
+def summarize3(txt, cuttor=None):
+    # Remove numpy and calc mean,std by own 21/08/13 13:07:22
     if cuttor:
         tmp_cuttor = cuttor
     else:
@@ -266,10 +270,9 @@ def summarize3(txt, cuttor=None):
             sentences.append(s)
     normalized_sentences = [s.lower() for s in sentences]
 
-    top_n_words = extract_keywords(txt, N, tmp_cuttor)
+    top_n_words = extract_keywords(txt, N_3, tmp_cuttor)
     scored_sentences = __score_sentences(normalized_sentences, top_n_words, tmp_cuttor)
-    avg = numpy.mean([s[1] for s in scored_sentences])
-    std = numpy.std([s[1] for s in scored_sentences])
+    avg,std = _mean_std([s[1] for s in scored_sentences])
     mean_scored = [(sent_idx, score) for (sent_idx, score) in scored_sentences
                    if score > avg + 0.5 * std]
     mean_scored_summary=[sentences[idx] for (idx, score) in mean_scored]

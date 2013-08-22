@@ -93,10 +93,10 @@ def key_word_test():
     with codecs.open(filename, 'r', 'utf-8') as file:
         content = file.read()
         keys = extract_keywords(content)
-        print ','.join(keys)
-        #print summarize1(content)
+        #print ','.join(keys)
+        print summarize1(content)
         print summarize2(content)
-        #print summarize3(content)
+        print summarize3(content)
 #key_word_test()
 
 #比较文本的相似度
