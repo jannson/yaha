@@ -6,7 +6,12 @@ import threading
 import codecs
 from math import sqrt
 from yaha import DICTS, get_dict, Cuttor
-from analyzer import ChineseAnalyzer
+try:
+    import whoosh
+    from analyzer import ChineseAnalyzer
+except ImportError:
+    # install whoosh to using ChineseAnalyzer
+    pass
 
 IDF_LOCK = threading.RLock()
 IDF_INIT = False
