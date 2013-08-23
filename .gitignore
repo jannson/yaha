@@ -1,6 +1,7 @@
 *.[oad]
 *.swp
 *.swo
+*.pyc
 cscope.*
 tags
 z.*

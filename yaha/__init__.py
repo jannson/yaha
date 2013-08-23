@@ -76,6 +76,9 @@ def __get_sentence_dict():
         cutlist_dict[c] = word
     return cutlist_dict
 
+# TODO do it better Only use installed=False in google app
+# Not temp_file support in GAE
+installed = True
 def get_dict(type):
     global DICT_INIT
     if type < 0 or type >= DICTS.LEN:
@@ -89,25 +92,39 @@ def get_dict(type):
         print >> sys.stderr, 'Start load dict...'
         t1 = time.time()
         curpath = os.path.normpath( os.path.join( os.getcwd(), os.path.dirname(__file__) )  )
-        tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
+        tmp_file = ''
+        if installed:
+            tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
+        else:
+            tmp_file = os.path.join(curpath,'dict','yaha.cache')
+            print tmp_file
         load_ok = True
 
         # Use pickle to load dict
-        if os.path.exists(tmp_file):
-            tmp_file_time = os.path.getmtime(tmp_file)
-            for p in DICTS.DEFAULT:
-                if tmp_file_time < os.path.getmtime(os.path.join(curpath, 'dict', p)):
-                    load_ok = False
-                    break
-            if load_ok:
-                try:
-                    DICTS.DEFAULT_DICT = pickle.load(open(tmp_file, 'rb'))
-                    print >> sys.stderr, 'Load dict from: ' + tmp_file
-                except:
-                    DICTS.DEFUALT_DICT = []
-                    load_ok = False
+        if installed:
+            if os.path.exists(tmp_file):
+                tmp_file_time = os.path.getmtime(tmp_file)
+                for p in DICTS.DEFAULT:
+                    if tmp_file_time < os.path.getmtime(os.path.join(curpath, 'dict', p)):
+                        load_ok = False
+                        break
+                if load_ok:
+                    try:
+                        DICTS.DEFAULT_DICT = pickle.load(open(tmp_file, 'rb'))
+                        print >> sys.stderr, 'Load dict from: ' + tmp_file
+                    except:
+                        DICTS.DEFUALT_DICT = []
+                        load_ok = False
+            else:
+                load_ok = False
         else:
-            load_ok = False
+            try:
+                DICTS.DEFAULT_DICT = pickle.load(open(tmp_file, 'rb'))
+                print >> sys.stderr, 'Load dict from: ' + tmp_file
+            except:
+                print >> sys.stderr, 'Error load dict from: ' + tmp_file
+                DICTS.DEFUALT_DICT = []
+                load_ok = False
 
         if not load_ok:
             for i in xrange(0, DICTS.LEN-1, 1):
@@ -127,24 +144,25 @@ def get_dict(type):
 
             # The sentence_dict is alwayse at last
             DICTS.DEFAULT_DICT.append(__get_sentence_dict())
-
-            # save to tempfile
-            tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
-            print >> sys.stderr, 'save dicts to tmp_file: ' + tmp_file
-            try:
-                tmp_suffix = "."+str(random.random())
-                with open(tmp_file+tmp_suffix,'wb') as temp_cache_file:
-                    pickle.dump(DICTS.DEFAULT_DICT, temp_cache_file, protocol=pickle.HIGHEST_PROTOCOL)
-                if os.name=='nt':
-                    import shutil
-                    replace_file = shutil.move
-                else:
-                    replace_file = os.rename
-                replace_file(tmp_file + tmp_suffix, tmp_file)
-            except:
-                print >> sys.stderr, "dump temp file failed."
-                import traceback
-                print >> sys.stderr, traceback.format_exc()
+            
+            if installed:
+                # save to tempfile
+                tmp_file = os.path.join(tempfile.gettempdir(), "yaha.cache")
+                print >> sys.stderr, 'save dicts to tmp_file: ' + tmp_file
+                try:
+                    tmp_suffix = "."+str(random.random())
+                    with open(tmp_file+tmp_suffix,'wb') as temp_cache_file:
+                        pickle.dump(DICTS.DEFAULT_DICT, temp_cache_file, protocol=pickle.HIGHEST_PROTOCOL)
+                    if os.name=='nt':
+                        import shutil
+                        replace_file = shutil.move
+                    else:
+                        replace_file = os.rename
+                    replace_file(tmp_file + tmp_suffix, tmp_file)
+                except:
+                    print >> sys.stderr, "dump temp file failed."
+                    import traceback
+                    print >> sys.stderr, traceback.format_exc()
 
         print >> sys.stderr, 'End load dict ', time.time() - t1, "seconds."
         DICT_INIT = True
@@ -314,20 +332,22 @@ class BaseCuttor(object):
                 line = line.decode('utf-8')
             except UnicodeDecodeError:
                 line = line.decode('gbk','ignore')
-        str = ''
-        for c in line:
-            if self.sentence_dict.has_key(c):
-                # stage 1
-                for s,need_cut in self.fn_stage1(str):
-                    yield (s, need_cut)
-
-                str = ''
-                yield (c, False)
+        for s,need_cut in self.fn_stage1(line):
+            if need_cut:
+                if s != '':
+                    str = ''
+                    for c in s:
+                        if self.sentence_dict.has_key(c):
+                            if str != '':
+                                yield (str, True)
+                            str = ''
+                            yield (c, False)
+                        else:
+                            str += c
+                    if str != '':
+                        yield (str, True)
             else:
-                str += c
-        if str != '':
-            for s,need_cut in self.fn_stage1(str):
-                yield (s, need_cut)
+                yield (s, False)
 
     # Only support one regex for stage1 now
     def set_stage1_regex(self, rex):
