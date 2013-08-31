@@ -5,6 +5,8 @@
 cscope.*
 tags
 z.*
+*.z
+*.o
 *.vim
 *.zzz
 TODO
