@@ -12,7 +12,8 @@ pip install haya
 在线演示
 ========
 代码部署在GAE上：yahademo.appspot.com
-因为被墙，所以弄了个代理在这：http://yaha.v-find.com/
+代码部署在GAE上：yaha.sinaapp.com
+原本的这个地址已不再使用：http://yaha.v-find.com/
 
 
 Feature
