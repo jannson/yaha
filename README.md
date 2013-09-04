@@ -13,7 +13,7 @@ pip install haya
 ========
 代码部署在GAE上：http://yahademo.appspot.com
 
-代码部署在GAE上：http://yaha.sinaapp.com
+代码部署在SAE上：http://yaha.sinaapp.com
 
 原本的这个地址已不再使用：http://yaha.v-find.com/
 
