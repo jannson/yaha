@@ -17,6 +17,8 @@ pip install haya
 
 原本的这个地址已不再使用：http://yaha.v-find.com/
 
+示例代码：https://github.com/jannson/yaha/blob/master/tests/test_cuttor.py
+
 
 Feature
 ========
