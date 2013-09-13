@@ -65,7 +65,8 @@ struct WordInfo {
     }
     float calc_entropy(map<string, uint32_t>& trim) {
         if (trim.size() == 0) {
-            return numeric_limits<float>::max();
+            //return numeric_limits<float>::max();
+            return numeric_limits<float>::min();
         }
         uint32_t trim_sum = 0;
         for (map<string, uint32_t>::iterator it = trim.begin(); it != trim.end(); ++it) {
@@ -130,7 +131,8 @@ int unhanzi_to_space(char* oline, const char* iline)
         ii += char_len;
         //BOOST_ASSERT(ii < line_len);
         if (ii > line_len) {
-            fprintf(stderr, "WARNING, last character[%s] length wrong line[%s]\n", iline + ii - char_len, iline);
+			//fprintf(stderr, "WARNING, last character[%s] length wrong line[%s]\n", iline + ii - char_len, iline);
+			;
         }
     }
     oline[io] = '\0';

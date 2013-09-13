@@ -5,6 +5,7 @@ from whoosh.fields import *
 from whoosh.qparser import QueryParser
 
 from yaha.analyse import ChineseAnalyzer 
+from yaha.analyse import YahaCorrector,words_train
 
 #copy this file from jieba project, just for testing
 
@@ -63,3 +64,7 @@ for keyword in (u"水果世博园",u"你",u"first",u"中文",u"交换机",u"交�
         print hit.highlights("content")
     print "="*10
 
+words_train('movie.txt', 'movie_key.txt', 'movie.graph')
+cor = YahaCorrector('movie_key.txt','movie.graph')
+sugs = cor.suggest(u"刘牛德")
+print " ".join(sugs)

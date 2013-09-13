@@ -9,6 +9,7 @@ from yaha import DICTS, get_dict, Cuttor
 try:
     import whoosh
     from analyzer import ChineseAnalyzer
+    from spelling import words_train, YahaCorrector
 except ImportError:
     # install whoosh to using ChineseAnalyzer
     pass

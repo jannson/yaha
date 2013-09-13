@@ -558,3 +558,10 @@ class Cuttor(BaseCuttor):
         else:
             return (0-self.default_prob)
 
+    def get_freq(self, term):
+        word = self.dict[term]
+        if word:
+            return word.base_freq
+        else:
+            return 0
+
