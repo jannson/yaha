@@ -5,7 +5,8 @@ from whoosh import spelling as whoosh_spelling
 from whoosh.automata import fst
 from whoosh.filedb.filestore import FileStorage
 from heapq import heappush, heapreplace
-from yaha.wordmaker import WordDict
+from yaha.wordmaker import WordDict as WordDict1
+from yaha.wordmaker2 import WordDict as WordDict2
 
 class YahaCorrector(whoosh_spelling.Corrector):
     """Suggests corrections based on the content of a raw
@@ -62,16 +63,27 @@ class YahaCorrector(whoosh_spelling.Corrector):
 
 re_line = re.compile("\W+|[a-zA-Z0-9]+", re.UNICODE)
 def words_train(in_file, word_file, graph_file):
-    word_dict = WordDict()
-    with codecs.open(in_file, 'r', 'utf-8') as file:
-        for line in file:
-            for sentence in re_line.split(line):
-                word_dict.learn(sentence)
-    word_dict.learn_flush()
-    print >> sys.stderr, 'get all words, save word to file', word_file
-    
-    word_dict.save_to_file(word_file)
-    print >> sys.stderr, 'save all words completely, create word graphp', graph_file
+
+    # Can only use a exists word_file to make graph_file
+    if in_file is not None:
+        #Auto create words from in_file
+        file_size = os.path.getsize(in_file)
+        word_dict = None
+        if file_size > 3*1024*1024:
+            # A little more quick but inaccurate than WordDict1
+            word_dict = WordDict2()
+            print >> sys.stderr, 'please wait, getting words from file', in_file
+        else:
+            word_dict = WordDict1()
+        with codecs.open(in_file, 'r', 'utf-8') as file:
+            for line in file:
+                for sentence in re_line.split(line):
+                    word_dict.learn(sentence)
+        word_dict.learn_flush()
+        print >> sys.stderr, 'get all words, save word to file', word_file
+        
+        word_dict.save_to_file(word_file)
+        print >> sys.stderr, 'save all words completely, create word graphp', graph_file
 
     words = []
     with codecs.open(word_file,'r','utf-8') as file:

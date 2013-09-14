@@ -274,7 +274,7 @@ class WordDict(BaseCuttor):
     def get_word(self, word):
         return self.dict[word]
 
-    def save_to_file(self, filename):
+    def save_to_file(self, filename, sorted=False):
         word_dict = self
         if sorted:
             final_words = []
