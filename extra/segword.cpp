@@ -65,8 +65,7 @@ struct WordInfo {
     }
     float calc_entropy(map<string, uint32_t>& trim) {
         if (trim.size() == 0) {
-            //return numeric_limits<float>::max();
-            return numeric_limits<float>::min();
+            return numeric_limits<float>::max();
         }
         uint32_t trim_sum = 0;
         for (map<string, uint32_t>::iterator it = trim.begin(); it != trim.end(); ++it) {
@@ -131,8 +130,8 @@ int unhanzi_to_space(char* oline, const char* iline)
         ii += char_len;
         //BOOST_ASSERT(ii < line_len);
         if (ii > line_len) {
-			//fprintf(stderr, "WARNING, last character[%s] length wrong line[%s]\n", iline + ii - char_len, iline);
-			;
+		//fprintf(stderr, "WARNING, last character[%s] length wrong line[%s]\n", iline + ii - char_len, iline);
+		;/* Ignore the error print 30/10/13 11:22:11 */
         }
     }
     oline[io] = '\0';
@@ -211,18 +210,14 @@ int gen_cad_words(hash_set<string>* cad_words_set, WordInfoMap& wordinfo_map)
         }
         if (static_cast<double>(total_freq) * wordinfo.freq / max_ff > 100.0) {
             cad_words_set->insert(word);
-#ifdef DEBUG
             //if (cad_words_set->insert(word)) {
             //    fprintf(stderr, "FATAL, set word[%s] failed\n", word.c_str());
             //    return -1;
             //}
-			fprintf(stderr, "cadword[%s], freq[%d]\n", word.c_str(), wordinfo.freq);
-#endif
+            fprintf(stderr, "cadword[%s], freq[%d]\n", word.c_str(), wordinfo.freq);
         }
     }
-#ifdef DEBUG
     fprintf(stderr, "cad_words_size[%d]\n", cad_words_set->size());
-#endif
     return 0;
 }
 
@@ -272,7 +267,7 @@ int trim_entropy_filter(vector<string>* keep_words, hash_set<string>& cad_words_
             fprintf(stderr, "WARNING, word[%s] in cad_word, not in word_info", it->c_str());
             continue;
         }
-        if (it_map->second.calc_is_keep()) {
+        if (it_map->first.size() <= WORD_LEN - 4 && it_map->second.calc_is_keep()) {
             keep_words->push_back(*it);
         }
     }
