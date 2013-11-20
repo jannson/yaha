@@ -8,6 +8,7 @@ Yaha分词
 ======
 pip install haya
 
+QQ: 2749-83126
 
 在线演示
 ========

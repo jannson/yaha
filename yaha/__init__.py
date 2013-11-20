@@ -565,7 +565,7 @@ class Cuttor(BaseCuttor):
         else:
             return 0
 
-cut_list = frozenset(u".。！!?；？！。，;")
+cut_list = frozenset(u".。！!?；？！。;")
 def cut_sentence(txt):
     if not isinstance(txt, unicode):
         try:
