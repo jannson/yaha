@@ -565,3 +565,20 @@ class Cuttor(BaseCuttor):
         else:
             return 0
 
+cut_list = frozenset(u".。！!?；？！。，;")
+def cut_sentence(txt):
+    if not isinstance(txt, unicode):
+        try:
+            txt = txt.decode('utf-8')
+        except UnicodeDecodeError:
+            txt = txt.decode('gbk','ignore')
+    str = ''
+    for c in txt:
+        if c in cut_list:
+            if str != '':
+                yield str
+            str = ''
+        else:
+            str += c
+    if str != '':
+        yield str

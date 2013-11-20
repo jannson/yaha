@@ -5,7 +5,7 @@ import collections
 import threading
 import codecs
 from math import sqrt
-from yaha import DICTS, get_dict, Cuttor
+from yaha import DICTS, get_dict, Cuttor, cut_sentence
 try:
     import whoosh
     from analyzer import ChineseAnalyzer
@@ -237,10 +237,8 @@ def summarize2(txt, cuttor=None):
         tmp_cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))
     
     sentences = []
-    #TODO do it better 21/08/13 12:36:08
-    for s,need in tmp_cuttor.cut_to_sentence(txt):
-        if need:
-            sentences.append(s)
+    for s in cut_sentence(txt):
+        sentences.append(s)
     normalized_sentences = [s.lower() for s in sentences]
 
     top_n_words = extract_keywords(txt, N_2, tmp_cuttor)
@@ -249,7 +247,8 @@ def summarize2(txt, cuttor=None):
     top_n_scored = sorted(scored_sentences, key=lambda s: s[1])[-TOP_SENTENCES:]
     top_n_scored = sorted(top_n_scored, key=lambda s: s[0])
     top_n_summary=[sentences[idx] for (idx, score) in top_n_scored]
-    return ', '.join(top_n_summary) + '.'
+    #return ', '.join(top_n_summary) + '.'
+    return u'。 '.join(top_n_summary) + u'。 '
 
 def _mean_std(l):
     ln = len(l)
@@ -270,10 +269,8 @@ def summarize3(txt, cuttor=None):
         tmp_cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))
     
     sentences = []
-    #TODO do it better 21/08/13 12:36:08
-    for s,need in tmp_cuttor.cut_to_sentence(txt):
-        if need:
-            sentences.append(s)
+    for s in cut_sentence(txt):
+        sentences.append(s)
     normalized_sentences = [s.lower() for s in sentences]
 
     top_n_words = extract_keywords(txt, N_3, tmp_cuttor)
@@ -282,4 +279,5 @@ def summarize3(txt, cuttor=None):
     mean_scored = [(sent_idx, score) for (sent_idx, score) in scored_sentences
                    if score > avg + 0.5 * std]
     mean_scored_summary=[sentences[idx] for (idx, score) in mean_scored]
-    return ', '.join(mean_scored_summary) + '.'
+    #return ', '.join(mean_scored_summary) + '.'
+    return u'。 '.join(mean_scored_summary) + u'。 '
