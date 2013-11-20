@@ -8,7 +8,7 @@ Yaha分词
 ======
 pip install haya
 
-QQ: 2749-83126
+QQ交流群（同时也是vxworks-kernel-like项目的交流群）: 2749-83126
 
 在线演示
 ========
