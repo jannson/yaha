@@ -7,6 +7,7 @@ Yaha分词
 词语生成(NEWS!)
 ========
 以前在extra/seqword.cpp实现词语发现功能，现在已升级优化，并独立出来：[项目地址](https://github.com/jannson/wordmaker)
+
 使用多线程，以及类似MapReduce的思想，可以处理50M+的文本，自动得到文本当中的专业名词、名字、地点名词等等词语。得到词语后可以加到分词工库的字典中。
 
 
