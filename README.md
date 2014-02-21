@@ -4,6 +4,12 @@ Yaha分词
 "Yaha" You can custom your Chinese Word Segmentation efficiently by using Yaha
 
 
+词语生成(NEWS!)
+========
+以前在extra/seqword.cpp实现词语发现功能，现在已升级优化，并独立出来：[项目地址](https://github.com/jannson/wordmaker)
+使用多线程，以及类似MapReduce的思想，可以处理50M+的文本，自动得到文本当中的专业名词、名字、地点名词等等词语。得到词语后可以加到分词工库的字典中。
+
+
 安装
 ======
 pip install haya
@@ -63,4 +69,4 @@ Algorithm
 
 目前状态
 ========
-准备发布第一个版本，如果有好心人帮测试会非常感谢。 最后要感谢jieba的作者，目前的字典是直接从jieba项目拷贝过来的。
+一直在用，貌似没有什么问题。最后要感谢jieba的作者，目前的字典是直接从jieba项目拷贝过来的。
