@@ -1,6 +1,6 @@
 # -*- coding=utf-8 -*-
 from operator import itemgetter
-from prioritydictionary import priorityDictionary
+from .prioritydictionary import priorityDictionary
 
 class Graph:
     INFINITY = 10000
@@ -9,7 +9,7 @@ class Graph:
     def __init__(self, n):
         self._data = {}
         self.N = n
-        for i in xrange(0,n,1):
+        for i in range(0,n,1):
             self._data[i] = {}
 
     def __str__(self):
@@ -19,7 +19,7 @@ class Graph:
         return (self._data)
 
     def __getitem__(self, node):
-        if self._data.has_key(node):
+        if node in self._data:
             return self._data[node]
         else:
             return None
@@ -35,7 +35,7 @@ class Graph:
         return
     
     def remove_edge(self, node_from, node_to, cost=None):
-        if self._data[node_to].has_key(node_from):
+        if node_from in self._data[node_to]:
             if not cost:
                 cost = self._data[node_to][node_from]
                 
@@ -109,10 +109,10 @@ def dp_graph(graph, node_start, node_end=None):
     previous = {}
     
     previous[node_start] = None
-    for idx in xrange(0, node_start+1, 1):
+    for idx in range(0, node_start+1, 1):
         distances[idx] = 0.0
 
-    for idx in xrange(node_start+1,N,1):
+    for idx in range(node_start+1,N,1):
         Q = priorityDictionary()
         for x in graph[idx]:
             Q[x] = distances[x] + graph[idx][x]

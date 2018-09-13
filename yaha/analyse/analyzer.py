@@ -10,16 +10,16 @@ STOP_WORDS = None
 def __init_stop_words():
     global STOP_WORDS
     stop_words = []
-    for t,v in get_dict(DICTS.EXT_STOPWORD).iteritems():
+    for t,v in get_dict(DICTS.EXT_STOPWORD).items():
         stop_words.append(t)
-    for t,v in get_dict(DICTS.STOPWORD).iteritems():
+    for t,v in get_dict(DICTS.STOPWORD).items():
         stop_words.append(t)
-    for t,v in get_dict(DICTS.STOP_SENTENCE).iteritems():
+    for t,v in get_dict(DICTS.STOP_SENTENCE).items():
         stop_words.append(t)
     STOP_WORDS = frozenset(stop_words)
 __init_stop_words()
 
-accepted_chars = re.compile(ur"[\u4E00-\u9FA5]+")
+accepted_chars = re.compile(r"[\u4E00-\u9FA5]+")
 
 _cuttor = Cuttor()
 _cuttor.set_stage1_regex(re.compile('(\d+)|([a-zA-Z]+)', re.I|re.U))

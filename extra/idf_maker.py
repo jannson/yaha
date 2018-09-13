@@ -45,8 +45,8 @@ def _from_python(value):
         else:
             value = 'false'
     elif isinstance(value, (list, tuple)):
-        value = u','.join([force_unicode(v) for v in value])
-    elif isinstance(value, (int, long, float)):
+        value = ','.join([force_unicode(v) for v in value])
+    elif isinstance(value, (int, float)):
         # Leave it alone.
         pass
     else:
@@ -66,11 +66,11 @@ schema_fields = {
 schema_fields[index_fieldname] = TEXT(stored=True, analyzer=ChineseAnalyzer())
 schema = Schema(**schema_fields)
 
-accepted_chars = re.compile(ur"[\u4E00-\u9FA5]+", re.UNICODE)
-accepted_line = re.compile(ur"\d+-\d+-\d+")
+accepted_chars = re.compile(r"[\u4E00-\u9FA5]+", re.UNICODE)
+accepted_line = re.compile(r"\d+-\d+-\d+")
 
 def get_content(filename):
-    accepted_line = re.compile(ur"\d+-\d+-\d+")
+    accepted_line = re.compile(r"\d+-\d+-\d+")
     file = codecs.open(filename, 'r', 'utf-8')
     content = ''
     names = []
@@ -108,7 +108,7 @@ def add_doc():
         writer.add_document(**doc)
         writer.commit()
         #writer.update_document(**doc)
-    except Exception, e:
+    except Exception as e:
         raise
 
 def write_db():
@@ -123,7 +123,7 @@ def write_db():
         doc[index_fieldname] = text
         try:
             writer.update_document(**doc)
-        except Exception, e:
+        except Exception as e:
             raise
 
     #add_doc(index, writer)
@@ -161,13 +161,13 @@ def search_db():
     for keyword, score in raw_results.key_terms(index_fieldname, docs=1000, numterms=240):
         if keyword in names:
             continue
-        if terms.has_key(keyword):
-            if not n_terms.has_key(keyword):
+        if keyword in terms:
+            if keyword not in n_terms:
                 keys.append(keyword)
-            elif n_terms.has_key(keyword) and n_terms[keyword].find('n')>=0:
+            elif keyword in n_terms and n_terms[keyword].find('n')>=0:
                 keys.append(keyword)
         #keys.append(keyword)
-    print ', '.join(keys)
+    print(', '.join(keys))
     #print len(raw_results)
     #for result in raw_results:
     #    print result[index_fieldname]
@@ -178,7 +178,7 @@ def key_all():
     reader = searcher.reader()
     cnt = 0
     filename = 'idf.txt'
-    accepted_chars = re.compile(ur"[\u4E00-\u9FA5]+", re.UNICODE)
+    accepted_chars = re.compile(r"[\u4E00-\u9FA5]+", re.UNICODE)
     file = codecs.open(filename, "w", "utf-8")
     file.write('%s\n' % reader.doc_count_all() )
     for term in reader.field_terms('content'):

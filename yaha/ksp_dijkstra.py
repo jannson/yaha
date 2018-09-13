@@ -1,6 +1,6 @@
 # -*- coding=utf-8 -*-
 from operator import itemgetter
-from prioritydictionary import priorityDictionary
+from .prioritydictionary import priorityDictionary
 
 class Graph:
     INFINITY = 100000
@@ -9,7 +9,7 @@ class Graph:
     def __init__(self, n, default_prob):
         self._data = {}
         self.N = n
-        for i in xrange(0,n-1,1):
+        for i in range(0,n-1,1):
             self._data[i] = {}
             self._data[i][i+1] = default_prob
         self._data[n-1] = {}
@@ -21,7 +21,7 @@ class Graph:
         return (self._data)
 
     def __getitem__(self, node):
-        if self._data.has_key(node):
+        if node in self._data:
             return self._data[node]
         else:
             return None
@@ -29,8 +29,8 @@ class Graph:
     def __iter__(self):
         return self._data.__iter__()
 
-    def iteritems(self):
-        return self._data.iteritems()
+    def items(self):
+        return iter(self._data.items())
     
     def add_edge(self, node_from, node_to, cost=None):
         if not cost:
@@ -40,7 +40,7 @@ class Graph:
         return
     
     def remove_edge(self, node_from, node_to, cost=None):
-        if self._data[node_from].has_key(node_to):
+        if node_to in self._data[node_from]:
             if not cost:
                 cost = self._data[node_from][node_to]
                 
@@ -164,7 +164,7 @@ def quick_shortest(graph):
     previous[0] = None
     distances[N] = 0.0
 
-    for idx in xrange(N-1,-1,-1):
+    for idx in range(N-1,-1,-1):
         Q = priorityDictionary()
         for x in graph[idx]:
             Q[x] = graph[idx][x] + distances[x]

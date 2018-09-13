@@ -8,8 +8,8 @@ from math import sqrt
 from yaha import DICTS, get_dict, Cuttor, cut_sentence
 try:
     import whoosh
-    from analyzer import ChineseAnalyzer
-    from spelling import words_train, YahaCorrector
+    from .analyzer import ChineseAnalyzer
+    from .spelling import words_train, YahaCorrector
 except ImportError:
     # install whoosh to using ChineseAnalyzer
     pass
@@ -44,7 +44,7 @@ def __init_idf():
             idf_freq[term] = frequency
             num_freqs += float(frequency)
 
-        for term,freq in idf_freq.iteritems():
+        for term,freq in idf_freq.items():
             idf_freq[term] = math.log(float(1 + num_docs) / (1 + freq))
 
     IDF_INIT = True
@@ -71,7 +71,7 @@ def extract_keywords(content, topk=18, cuttor=None):
         if len(word.strip()) < 2:
             continue
         lower_word = word.lower()
-        if stopwords.has_key(lower_word):
+        if lower_word in stopwords:
             continue
         #TODO only leave the 'n' word? 21/08/13 09:13:36
         if tmp_cuttor.exist(lower_word) and not tmp_cuttor.word_type(lower_word, 'n'):
@@ -81,7 +81,7 @@ def extract_keywords(content, topk=18, cuttor=None):
             freq[lower_word] += 1
         else:
             freq[lower_word] = 1
-    freq = [(k,v/total) for k,v in freq.iteritems()]
+    freq = [(k,v/total) for k,v in freq.items()]
     tf_idf_list = [(v * idf_freq.get(k,median_idf),k) for k,v in freq]
     st_list = sorted(tf_idf_list, reverse=True)
 
@@ -104,12 +104,12 @@ def near_duplicate(content1, content2, cuttor=None):
         is_drop = False
         lw = w.lower()
         for stopword in stopwords:
-            if stopword.has_key(lw):
+            if lw in stopword:
                 is_drop = True
                 break
             if is_drop:
                 continue
-            if lw not in file_words.keys():
+            if lw not in list(file_words.keys()):
                 file_words[lw] = [1,0]
             else:
                 file_words[lw][0] += 1
@@ -119,12 +119,12 @@ def near_duplicate(content1, content2, cuttor=None):
         is_drop = False
         lw = w.lower()
         for stopword in stopwords:
-            if stopword.has_key(lw):
+            if lw in stopword:
                 is_drop = True
                 break
             if is_drop:
                 continue
-            if lw not in file_words.keys():
+            if lw not in list(file_words.keys()):
                 file_words[lw] = [0,1]
             else:
                 file_words[lw][1] += 1
@@ -132,7 +132,7 @@ def near_duplicate(content1, content2, cuttor=None):
     sum_2 = 0
     sum_file1 = 0
     sum_file2 = 0
-    for word in file_words.values():
+    for word in list(file_words.values()):
         sum_2 += word[0]*word[1]
         sum_file1 += word[0]**2
         sum_file2 += word[1]**2
@@ -162,7 +162,7 @@ def summarize1(original_text, summary_size = 8, cuttor = None):
 
     for word in words_sorted:
         matching_sentence = __search_word(sentences, word)
-        if matching_sentence <> '':
+        if matching_sentence != '':
             summary_set[matching_sentence] = 1
             if len(summary_set) >= summary_size:
                 break
@@ -189,7 +189,7 @@ def __score_sentences(sentences, important_words, cuttor):
                 # Compute an index for where any important words occur in the sentence
 
                 word_idx.append(s.index(w))
-            except ValueError, e: # w not in this particular sentence
+            except ValueError as e: # w not in this particular sentence
                 pass
 
         word_idx.sort()
@@ -248,7 +248,7 @@ def summarize2(txt, cuttor=None):
     top_n_scored = sorted(top_n_scored, key=lambda s: s[0])
     top_n_summary=[sentences[idx] for (idx, score) in top_n_scored]
     #return ', '.join(top_n_summary) + '.'
-    return u'。 '.join(top_n_summary) + u'。 '
+    return '。 '.join(top_n_summary) + '。 '
 
 def _mean_std(l):
     ln = len(l)
@@ -280,4 +280,4 @@ def summarize3(txt, cuttor=None):
                    if score > avg + 0.5 * std]
     mean_scored_summary=[sentences[idx] for (idx, score) in mean_scored]
     #return ', '.join(mean_scored_summary) + '.'
-    return u'。 '.join(mean_scored_summary) + u'。 '
+    return '。 '.join(mean_scored_summary) + '。 '

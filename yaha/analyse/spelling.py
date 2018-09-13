@@ -34,7 +34,7 @@ class YahaCorrector(whoosh_spelling.Corrector):
 
         heap = []
         seen = set()
-        for k in xrange(1, maxdist + 1):
+        for k in range(1, maxdist + 1):
             for item in _suggestions(text, k, prefix):
                 if item[1] in seen:
                     continue
@@ -55,7 +55,7 @@ class YahaCorrector(whoosh_spelling.Corrector):
         return [sug for _, sug in sugs]
 
     def _suggestions(self, text, maxdist, prefix):
-        if self.dict.has_key(text):
+        if text in self.dict:
             yield (len(text)*10 + self.dict.get(text,0)*5, text)
         for sug in fst.within(self.graph, text, k=maxdist, prefix=prefix):
             # Higher scores are better, so negate the edit distance
@@ -72,7 +72,7 @@ def words_train(in_file, word_file, graph_file):
         if file_size > 3*1024*1024:
             # A little more quick but inaccurate than WordDict1
             word_dict = WordDict2()
-            print >> sys.stderr, 'please wait, getting words from file', in_file
+            print('please wait, getting words from file', in_file, file=sys.stderr)
         else:
             word_dict = WordDict1()
         with codecs.open(in_file, 'r', 'utf-8') as file:
@@ -80,10 +80,10 @@ def words_train(in_file, word_file, graph_file):
                 for sentence in re_line.split(line):
                     word_dict.learn(sentence)
         word_dict.learn_flush()
-        print >> sys.stderr, 'get all words, save word to file', word_file
+        print('get all words, save word to file', word_file, file=sys.stderr)
         
         word_dict.save_to_file(word_file)
-        print >> sys.stderr, 'save all words completely, create word graphp', graph_file
+        print('save all words completely, create word graphp', graph_file, file=sys.stderr)
 
     words = []
     with codecs.open(word_file,'r','utf-8') as file:
@@ -94,4 +94,4 @@ def words_train(in_file, word_file, graph_file):
     words = sorted(words)
 
     whoosh_spelling.wordlist_to_graph_file(words, graph_file)
-    print >> sys.stderr, 'words_train ok'
+    print('words_train ok', file=sys.stderr)
